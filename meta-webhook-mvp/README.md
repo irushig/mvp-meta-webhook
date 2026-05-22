@@ -22,11 +22,43 @@ Created Time: ...
 
 This MVP intentionally does not include Instagram, DMs, database storage, AI classification, reply sending, or HMAC signature verification.
 
+It also includes a small Inngest queue test for Facebook comments:
+
+```txt
+Facebook Page comment
+-> Meta webhook
+-> local backend logs the event
+-> backend sends facebook/comment.received to Inngest
+-> Inngest function processes the event in the background
+```
+
+## System Flow Diagram
+
+![Meta webhook and Inngest flow](assets/meta-webhook-inngest-flow.png)
+
+The diagram shows the complete MVP flow:
+
+```txt
+Facebook Page Comment
+-> Meta Webhook
+-> ngrok HTTPS Tunnel
+-> Express MVP Server
+-> terminal log
+-> Inngest background event
+-> background function
+-> future database / Smart Inbox
+```
+
 ## Project Files
 
 ```txt
 meta-webhook-mvp/
+  assets/
+    meta-webhook-inngest-flow.png
   index.js
+  inngest/
+    client.js
+    functions.js
   package.json
   package-lock.json
   .gitignore
@@ -50,9 +82,17 @@ GET  /webhook/meta
 POST /webhook/meta
 ```
 
+It also exposes an Inngest endpoint:
+
+```txt
+GET/POST/PUT /api/inngest
+```
+
 The GET route is for Meta webhook verification.
 
 The POST route receives webhook events from Meta and logs Page feed comment events.
+
+The Inngest route lets the Inngest Dev Server discover and run local background functions.
 
 ## Verify Token
 
@@ -86,6 +126,78 @@ Meta webhook MVP running on http://localhost:3000
 ```
 
 Keep this terminal open.
+
+## Run Inngest Locally
+
+This MVP uses Inngest as a queue/background worker test.
+
+Install dependencies first:
+
+```cmd
+npm.cmd install
+```
+
+Start the Express server:
+
+```cmd
+npm.cmd run dev:inngest
+```
+
+Open another terminal and run the Inngest Dev Server:
+
+```cmd
+npx.cmd inngest-cli@latest dev -u http://localhost:3000/api/inngest
+```
+
+Open the Inngest Dev Server UI:
+
+```txt
+http://localhost:8288
+```
+
+For normal webhook testing without Inngest, `npm.cmd start` is enough. For Inngest local testing, use `npm.cmd run dev:inngest` so `INNGEST_DEV=1` is set.
+
+When a new Facebook comment webhook is received, the Express server sends this event to Inngest:
+
+```txt
+facebook/comment.received
+```
+
+The Inngest function ID is:
+
+```txt
+process-facebook-comment
+```
+
+Expected Express terminal output after a new comment:
+
+```txt
+NEW FACEBOOK COMMENT RECEIVED
+Page ID: ...
+Post ID: ...
+Comment ID: ...
+Message: ...
+Sender ID: ...
+Created Time: ...
+----------------------------------
+
+Queued Inngest event IDs: [...]
+```
+
+Expected Inngest worker output:
+
+```txt
+INNGEST PROCESSING FACEBOOK COMMENT
+Page ID: ...
+Post ID: ...
+Comment ID: ...
+Message: ...
+Sender ID: ...
+Created Time: ...
+----------------------------------
+```
+
+If the Inngest Dev Server is not running, the webhook still returns `200` to Meta. The queue send failure is logged but does not block the webhook response.
 
 ## Expose The Server With Ngrok
 
@@ -295,6 +407,18 @@ Terminal 1: npm.cmd start
 Terminal 2: ngrok http 3000
 ```
 
+If testing Inngest too, keep a third terminal open:
+
+```txt
+Terminal 3: npx.cmd inngest-cli@latest dev -u http://localhost:3000/api/inngest
+```
+
+For the Inngest test, run Terminal 1 with:
+
+```cmd
+npm.cmd run dev:inngest
+```
+
 Then:
 
 ```txt
@@ -475,6 +599,13 @@ Meta webhook verification prints WEBHOOK_VERIFIED
 Page subscription returns success true
 GET subscribed_apps shows CampaignMind subscribed to feed
 Real Page feed webhook events reach the local terminal
+```
+
+Inngest queue test:
+
+```txt
+New Facebook comments send facebook/comment.received events
+process-facebook-comment handles those events in the background
 ```
 
 Next MVP step:
