@@ -4,13 +4,15 @@
   "description": "Tiny MVP server for testing Facebook Page feed comment webhooks.",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "dev:inngest": "set INNGEST_DEV=1&& node index.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "inngest": "^4.4.0"
   }
 }
